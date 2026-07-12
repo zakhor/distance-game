@@ -271,6 +271,11 @@
     font-weight: 700;
     color: var(--text);
   }
+  .modal-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
   #modalResetBtn,
   #saveResultBtn {
     display: inline-flex;
@@ -348,8 +353,10 @@
   <div class="modal-panel">
     <h2 class="modal-title" id="clearModalTitle">タッチ成功</h2>
     <p class="modal-turns" id="clearTurns">かかったターン：0</p>
-    <button id="saveResultBtn">画像をコピー</button>
-    <button id="modalResetBtn">OK</button>
+    <div class="modal-actions">
+      <button id="saveResultBtn">画像をコピー</button>
+      <button id="modalResetBtn">OK</button>
+    </div>
   </div>
 </div>
 
