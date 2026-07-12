@@ -265,6 +265,18 @@
     font-size: 20px;
     font-weight: 700;
   }
+  .modal-rank {
+    margin: 0 0 10px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  #clearRank {
+    display: inline-block;
+    margin-inline: .4em;
+    color: var(--player);
+    font-size: 22px;
+    font-weight: 800;
+  }
   .modal-turns {
     margin: 0 0 16px;
     font-size: 16px;
@@ -352,6 +364,7 @@
 <div id="clearModal" aria-modal="true" role="dialog" aria-labelledby="clearModalTitle">
   <div class="modal-panel">
     <h2 class="modal-title" id="clearModalTitle">タッチ成功</h2>
+    <p class="modal-rank">あなたは<span id="clearRank">距離感マスター</span>です</p>
     <p class="modal-turns" id="clearTurns">かかったターン：0</p>
     <div class="modal-actions">
       <button id="saveResultBtn">画像をコピー</button>
@@ -377,6 +390,7 @@
     saveResultBtn: document.getElementById('saveResultBtn'),
     modalResetBtn: document.getElementById('modalResetBtn'),
     clearModal: document.getElementById('clearModal'),
+    clearRank: document.getElementById('clearRank'),
     clearTurns: document.getElementById('clearTurns')
   };
 
@@ -630,7 +644,16 @@
     }, CONFETTI_SETTINGS.STREAM_INTERVAL_MS);
   }
 
+  function titleForTurns(turns) {
+    if (turns <= 10) return '距離感マスター';
+    if (turns <= 30) return '距離感熟練者';
+    if (turns <= 60) return '距離感上手';
+    if (turns <= 100) return '距離感見習い';
+    return '距離感初心者';
+  }
+
   function showClearModal(turns) {
+    dom.clearRank.textContent = titleForTurns(turns);
     dom.clearTurns.textContent = `かかったターン：${turns}`;
     dom.clearModal.classList.add('show');
   }
@@ -664,9 +687,28 @@
     context.fillStyle = '#15803d';
     context.font = '700 84px system-ui, sans-serif';
     context.fillText('タッチ成功', 88, 310);
+    const rankPrefix = 'あなたは';
+    const rankTitle = titleForTurns(state.turn);
+    const rankSuffix = 'です';
+    const rankY = 410;
+    const rankGap = 14;
+    let rankX = 88;
+
     context.fillStyle = '#1f2937';
-    context.font = '700 42px system-ui, sans-serif';
-    context.fillText(`かかったターン：${state.turn}`, 88, 420);
+    context.font = '700 36px system-ui, sans-serif';
+    context.fillText(rankPrefix, rankX, rankY);
+    rankX += context.measureText(rankPrefix).width + rankGap;
+
+    context.fillStyle = '#2563eb';
+    context.font = '800 48px system-ui, sans-serif';
+    context.fillText(rankTitle, rankX, rankY);
+    rankX += context.measureText(rankTitle).width + rankGap;
+
+    context.fillStyle = '#1f2937';
+    context.font = '700 36px system-ui, sans-serif';
+    context.fillText(rankSuffix, rankX, rankY);
+    context.font = '700 36px system-ui, sans-serif';
+    context.fillText(`かかったターン：${state.turn}`, 88, 485);
 
     return canvas;
   }
