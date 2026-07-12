@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>距離感ゲーム 試作</title>
+<title>距離感ゲーム</title>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
   :root {
@@ -11,7 +11,7 @@
     --panel: #ffffff;
     --text: #1f2937;
     --muted: #6b7280;
-    --border: #d1d5db;
+    --border: #374151;
     --track: #d1d5db;
     --cpu: #111827;
     --player: #2563eb;
@@ -36,15 +36,16 @@
     margin: 0 0 10px;
     font-size: 24px;
   }
-  .desc {
+  .rules {
     margin: 0 0 16px;
     color: var(--muted);
     line-height: 1.6;
   }
+  .rules div + div { margin-top: 3px; }
   .card {
     background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
     padding: 12px;
   }
   .label {
@@ -59,21 +60,18 @@
   .board-shell {
     position: relative;
     background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 12px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
   }
   #board {
+    --track-y: 134px;
     position: relative;
     width: 100%;
-    height: 520px;
+    height: 170px;
     overflow: hidden;
-    border-radius: 12px;
-    background:
-      linear-gradient(rgba(31,41,55,.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(31,41,55,.05) 1px, transparent 1px),
-      #fafafa;
-    background-size: 32px 32px;
+    border-radius: 0;
+    background: transparent;
     cursor: crosshair;
     user-select: none;
   }
@@ -81,7 +79,7 @@
     position: absolute;
     left: 0;
     width: 100%;
-    top: 50%;
+    top: var(--track-y);
     height: 2px;
     background: var(--track);
     transform: translateY(-50%);
@@ -89,27 +87,27 @@
   }
   #measureBand {
     position: absolute;
-    top: calc(50% - 5px);
+    top: calc(var(--track-y) - 5px);
     height: 10px;
     border-radius: 999px;
     background: rgba(37,99,235,.18);
     pointer-events: none;
     display: none;
+    transition: left .42s cubic-bezier(.22, 1, .36, 1), width .42s cubic-bezier(.22, 1, .36, 1);
   }
   #toleranceBand {
     position: absolute;
     top: 0;
     height: 100%;
     background: rgba(245,158,11,.18);
-    border-left: 1px solid rgba(217,119,6,.46);
-    border-right: 1px solid rgba(217,119,6,.46);
+    border: 1px solid rgba(217,119,6,.46);
     pointer-events: none;
     display: none;
     z-index: 2;
   }
   .person {
     position: absolute;
-    top: 50%;
+    top: var(--track-y);
     width: 40px;
     height: 0;
     /* 人物の基準点を足元にし、数直線と一致させる。 */
@@ -144,7 +142,7 @@
   }
   #aimArrow {
     position: absolute;
-    top: calc(50% - 34px);
+    top: calc(var(--track-y) - 34px);
     left: 0;
     width: 26px;
     height: 34px;
@@ -178,12 +176,19 @@
     border-top: 10px solid currentColor;
     transform: translateX(-50%);
   }
+  #aimPerson {
+    color: var(--player);
+    display: none;
+    opacity: .48;
+    z-index: 4;
+  }
   #cpu {
     color: var(--cpu);
   }
   #player {
     color: var(--player);
     display: none;
+    transition: left .42s cubic-bezier(.22, 1, .36, 1);
   }
   #result {
     position: absolute;
@@ -192,12 +197,13 @@
     transform: translateX(-50%);
     display: none;
     padding: 10px 16px;
-    border-radius: 999px;
+    border: 2px solid rgba(17,24,39,.85);
+    border-radius: 4px;
     color: #fff;
     font-weight: 800;
-    letter-spacing: .04em;
+    letter-spacing: 0;
     z-index: 5;
-    box-shadow: 0 6px 18px rgba(0,0,0,.2);
+    box-shadow: none;
   }
   #turnIndicator {
     position: absolute;
@@ -221,17 +227,17 @@
   }
   button {
     appearance: none;
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
     background: #fff;
     padding: 10px 14px;
     font-weight: 700;
     cursor: pointer;
   }
   button:hover { background: #f9fafb; }
-  .note {
-    color: var(--muted);
-    font-size: 13px;
+  #resetBtn:hover {
+    background: var(--text);
+    color: #fff;
   }
   #clearModal {
     position: fixed;
@@ -239,46 +245,61 @@
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(17,24,39,.42);
-    z-index: 20;
+    background: transparent;
+    z-index: 40;
     padding: 24px;
   }
   #clearModal.show {
     display: flex;
   }
   .modal-panel {
-    width: min(420px, 100%);
+    width: min(360px, 100%);
     background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 26px;
-    text-align: center;
-    box-shadow: 0 24px 60px rgba(0,0,0,.24);
+    border: 2px solid var(--text);
+    border-radius: 4px;
+    padding: 18px 20px;
+    text-align: left;
   }
   .modal-title {
-    margin: 0 0 12px;
-    font-size: 28px;
-    font-weight: 900;
+    margin: 0 0 14px;
+    font-size: 20px;
+    font-weight: 700;
   }
   .modal-turns {
-    margin: 0 0 20px;
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--fit);
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  #modalResetBtn,
+  #saveResultBtn {
+    display: inline-flex;
+    align-items: center;
+    height: 38px;
+    border-color: var(--text);
+    border-radius: 4px;
+    background: transparent;
+    padding: 7px 12px;
+  }
+  #modalResetBtn:hover,
+  #saveResultBtn:hover {
+    background: var(--text);
+    color: #fff;
   }
   @media (max-width: 720px) {
     .wrap { padding: 12px; }
-    #board { height: 420px; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>距離感ゲーム — 試作</h1>
-  <p class="desc">
-    CPUとの距離を、水平な直線上でコールします。CPUは右端に固定され、左端からCPUまでが距離150です。
-    黄色い帯は直前の判定で使われた許容範囲を示します。
-  </p>
+  <h1>距離感ゲーム</h1>
+  <div class="rules">
+    <div>直線上の位置を指定して、相手の距離感にフィットさせよう。</div>
+    <div>フィットすれば距離感は近づき、外れると遠ざかる。</div>
+    <div>最終的にタッチできる距離感まで近づけばクリア。</div>
+    <div>黄色の帯は、前回のフィット範囲を示します。</div>
+  </div>
 
   <div class="board-shell">
     <div id="board" aria-label="ゲーム盤">
@@ -286,8 +307,17 @@
       <div id="toleranceBand"></div>
       <div id="measureBand"></div>
       <div id="aimArrow" aria-hidden="true"></div>
+      <div id="aimPerson" class="person" data-label="YOU" aria-hidden="true">
+        <svg viewBox="0 0 32 56">
+          <circle cx="16" cy="8" r="5"></circle>
+          <path d="M16 14v19"></path>
+          <path d="M7 23h18"></path>
+          <path d="M16 33 8 50"></path>
+          <path d="M16 33 24 50"></path>
+        </svg>
+      </div>
       <div id="turnIndicator">ターン <span id="turn">1</span></div>
-      <div id="cpu" class="person" data-label="CPU">
+      <div id="cpu" class="person" data-label="相手">
         <svg viewBox="0 0 32 56" aria-hidden="true">
           <circle cx="16" cy="8" r="5"></circle>
           <path d="M16 14v19"></path>
@@ -311,16 +341,14 @@
 
   <div class="controls">
     <button id="resetBtn">リセット</button>
-    <span class="note">
-      許容幅は距離感の10%を基本とし、最低幅2を確保します。近すぎは遠すぎより重く、失敗時の後退量は現在距離までに抑えます。
-    </span>
   </div>
 </div>
 
 <div id="clearModal" aria-modal="true" role="dialog" aria-labelledby="clearModalTitle">
   <div class="modal-panel">
     <h2 class="modal-title" id="clearModalTitle">タッチ成功</h2>
-    <p class="modal-turns" id="clearTurns">クリアにかかったターン：0回</p>
+    <p class="modal-turns" id="clearTurns">かかったターン：0</p>
+    <button id="saveResultBtn">画像をコピー</button>
     <button id="modalResetBtn">OK</button>
   </div>
 </div>
@@ -333,11 +361,13 @@
     toleranceBand: document.getElementById('toleranceBand'),
     measureBand: document.getElementById('measureBand'),
     aimArrow: document.getElementById('aimArrow'),
+    aimPerson: document.getElementById('aimPerson'),
     cpu: document.getElementById('cpu'),
     player: document.getElementById('player'),
     result: document.getElementById('result'),
     turn: document.getElementById('turn'),
     resetBtn: document.getElementById('resetBtn'),
+    saveResultBtn: document.getElementById('saveResultBtn'),
     modalResetBtn: document.getElementById('modalResetBtn'),
     clearModal: document.getElementById('clearModal'),
     clearTurns: document.getElementById('clearTurns')
@@ -463,11 +493,22 @@
   function renderAimArrow() {
     if (state.aimDistance === null || state.ended) {
       dom.aimArrow.style.display = 'none';
+      dom.aimPerson.style.display = 'none';
       return;
     }
 
+    const aimX = `${distanceToScreenX(state.aimDistance)}px`;
+
+    if (state.playerDistance === null) {
+      dom.aimArrow.style.display = 'none';
+      dom.aimPerson.style.display = 'block';
+      dom.aimPerson.style.left = aimX;
+      return;
+    }
+
+    dom.aimPerson.style.display = 'none';
     dom.aimArrow.style.display = 'block';
-    dom.aimArrow.style.left = `${distanceToScreenX(state.aimDistance)}px`;
+    dom.aimArrow.style.left = aimX;
   }
 
   function renderMeasureBand() {
@@ -583,12 +624,83 @@
   }
 
   function showClearModal(turns) {
-    dom.clearTurns.textContent = `クリアにかかったターン：${turns}回`;
+    dom.clearTurns.textContent = `かかったターン：${turns}`;
     dom.clearModal.classList.add('show');
   }
 
   function hideClearModal() {
     dom.clearModal.classList.remove('show');
+  }
+
+  function createResultImageCanvas() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 630;
+
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#1f2937';
+    context.lineWidth = 8;
+    context.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+
+    context.fillStyle = '#1f2937';
+    context.font = '700 44px system-ui, sans-serif';
+    context.fillText('距離感ゲーム', 88, 118);
+    context.strokeStyle = '#9ca3af';
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(88, 160);
+    context.lineTo(canvas.width - 88, 160);
+    context.stroke();
+
+    context.fillStyle = '#15803d';
+    context.font = '700 84px system-ui, sans-serif';
+    context.fillText('タッチ成功', 88, 310);
+    context.fillStyle = '#1f2937';
+    context.font = '700 42px system-ui, sans-serif';
+    context.fillText(`かかったターン：${state.turn}`, 88, 420);
+
+    return canvas;
+  }
+
+  function downloadResultImage(blob) {
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = `distance-game-${state.turn}-turns.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  async function copyResultImage() {
+    const canvas = createResultImageCanvas();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) return;
+
+    const canCopyImage = window.isSecureContext
+      && navigator.clipboard
+      && typeof navigator.clipboard.write === 'function'
+      && typeof ClipboardItem !== 'undefined';
+
+    if (canCopyImage) {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        dom.saveResultBtn.textContent = 'コピーしました';
+        setTimeout(() => {
+          dom.saveResultBtn.textContent = '画像をコピー';
+        }, 1200);
+        return;
+      } catch (error) {
+        // A permission denial falls back to a downloadable PNG.
+      }
+    }
+
+    downloadResultImage(blob);
   }
 
   function setToleranceSnapshot(distance) {
@@ -691,6 +803,7 @@
   dom.board.addEventListener('mousemove', handleBoardMouseMove);
   dom.board.addEventListener('mouseleave', handleBoardMouseLeave);
   dom.resetBtn.addEventListener('click', resetGame);
+  dom.saveResultBtn.addEventListener('click', copyResultImage);
   dom.modalResetBtn.addEventListener('click', resetGame);
   window.addEventListener('resize', () => {
     renderViewport();
