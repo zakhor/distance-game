@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>距離感ゲーム 試作</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #d1d5db;
+    --track: #d1d5db;
+    --cpu: #111827;
+    --player: #2563eb;
+    --fit: #15803d;
+    --nofit: #b91c1c;
+    --warning: #d97706;
+    --tolerance: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .wrap {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  h1 {
+    margin: 0 0 10px;
+    font-size: 24px;
+  }
+  .desc {
+    margin: 0 0 16px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .hud {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .value {
+    margin-top: 4px;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .board-shell {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px;
+  }
+  #board {
+    position: relative;
+    width: 100%;
+    height: 520px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #fafafa;
+    cursor: crosshair;
+    user-select: none;
+  }
+  #world {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 6000px;
+    height: 100%;
+    transform: translateX(0);
+    transition: transform .55s ease;
+    pointer-events: none;
+  }
+  #gridLayer {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(31,41,55,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,41,55,.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  #track {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    top: 50%;
+    height: 2px;
+    background: var(--track);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  #measureBand {
+    position: absolute;
+    top: calc(50% - 5px);
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(37,99,235,.18);
+    transition: left .55s ease, width .55s ease;
+    pointer-events: none;
+    display: none;
+  }
+  #toleranceBand {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(245,158,11,.18);
+    border-left: 1px solid rgba(217,119,6,.46);
+    border-right: 1px solid rgba(217,119,6,.46);
+    transition: left .55s ease, width .55s ease;
+    pointer-events: none;
+    display: none;
+    z-index: 2;
+  }
+  .person {
+    position: absolute;
+    top: 50%;
+    width: 40px;
+    height: 66px;
+    transform: translate(-50%, -78%);
+    transition: left .55s ease, transform .15s ease;
+    z-index: 3;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .person::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text);
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .person svg {
+    width: 34px;
+    height: 54px;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,.18));
+  }
+  #cpu {
+    color: var(--cpu);
+  }
+  #player {
+    color: var(--player);
+    display: none;
+  }
+  #result {
+    position: absolute;
+    left: 50%;
+    top: 18px;
+    transform: translateX(-50%);
+    display: none;
+    padding: 10px 16px;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 800;
+    letter-spacing: .04em;
+    z-index: 5;
+    box-shadow: 0 6px 18px rgba(0,0,0,.2);
+  }
+  .fit { background: var(--fit); }
+  .nofit { background: var(--nofit); }
+  .warning { background: var(--warning); }
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  button {
+    appearance: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button:hover { background: #f9fafb; }
+  .note {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .log {
+    margin-top: 12px;
+    max-height: 190px;
+    overflow: auto;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .log-entry {
+    border-top: 1px solid #e5e7eb;
+    padding: 8px 0;
+  }
+  .log-entry:first-child { border-top: 0; }
+  #clearModal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(17,24,39,.42);
+    z-index: 20;
+    padding: 24px;
+  }
+  #clearModal.show {
+    display: flex;
+  }
+  .modal-panel {
+    width: min(420px, 100%);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 26px;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0,0,0,.24);
+  }
+  .modal-title {
+    margin: 0 0 12px;
+    font-size: 28px;
+    font-weight: 900;
+  }
+  .modal-turns {
+    margin: 0 0 20px;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--fit);
+  }
+  @media (max-width: 720px) {
+    .wrap { padding: 12px; }
+    .hud { grid-template-columns: 1fr; }
+    #board { height: 420px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>距離感ゲーム — 試作</h1>
+  <p class="desc">
+    CPUとの距離を、水平な直線上でコールします。判定後、CPUは更新前の距離だけプレイヤーの右へ移動します。
+    移動後は表示領域が横へ動き、次のターンはCPUが右端に見える状態から始まります。
+  </p>
+
+  <div class="hud">
+    <div class="card">
+      <div class="label">ターン</div>
+      <div class="value" id="turn">1</div>
+    </div>
+    <div class="card">
+      <div class="label">判定</div>
+      <div class="value" id="judge">未判定</div>
+    </div>
+  </div>
+
+  <div class="board-shell">
+    <div id="board" aria-label="ゲーム盤">
+      <div id="world">
+        <div id="gridLayer"></div>
+        <div id="track"></div>
+        <div id="toleranceBand"></div>
+        <div id="measureBand"></div>
+        <div id="cpu" class="person" data-label="CPU">
+          <svg viewBox="0 0 32 56" aria-hidden="true">
+            <circle cx="16" cy="8" r="5"></circle>
+            <path d="M16 14v19"></path>
+            <path d="M7 23h18"></path>
+            <path d="M16 33 8 50"></path>
+            <path d="M16 33 24 50"></path>
+          </svg>
+        </div>
+        <div id="player" class="person" data-label="YOU">
+          <svg viewBox="0 0 32 56" aria-hidden="true">
+            <circle cx="16" cy="8" r="5"></circle>
+            <path d="M16 14v19"></path>
+            <path d="M7 23h18"></path>
+            <path d="M16 33 8 50"></path>
+            <path d="M16 33 24 50"></path>
+          </svg>
+        </div>
+      </div>
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="resetBtn">リセット</button>
+    <span class="note">
+      許容幅は距離感の10%を基本とし、最低幅2を確保します。近すぎは遠すぎより重く、失敗時の後退量は現在距離の50%までに抑えます。
+    </span>
+  </div>
+
+  <div class="card log" id="log"></div>
+</div>
+
+<div id="clearModal" aria-modal="true" role="dialog" aria-labelledby="clearModalTitle">
+  <div class="modal-panel">
+    <h2 class="modal-title" id="clearModalTitle">タッチ成功</h2>
+    <p class="modal-turns" id="clearTurns">クリアにかかったターン：0回</p>
+    <button id="modalResetBtn">リセット</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const dom = {
+    board: document.getElementById('board'),
+    world: document.getElementById('world'),
+    gridLayer: document.getElementById('gridLayer'),
+    track: document.getElementById('track'),
+    toleranceBand: document.getElementById('toleranceBand'),
+    measureBand: document.getElementById('measureBand'),
+    cpu: document.getElementById('cpu'),
+    player: document.getElementById('player'),
+    result: document.getElementById('result'),
+    turn: document.getElementById('turn'),
+    judge: document.getElementById('judge'),
+    resetBtn: document.getElementById('resetBtn'),
+    modalResetBtn: document.getElementById('modalResetBtn'),
+    clearModal: document.getElementById('clearModal'),
+    clearTurns: document.getElementById('clearTurns'),
+    log: document.getElementById('log')
+  };
+
+  const CONFETTI_SETTINGS = {
+    INITIAL_PARTICLE_COUNT: 15,
+    INITIAL_SPREAD: 100,
+    INITIAL_GRAVITY: 0.8,
+    INITIAL_TICKS: 600,
+    STREAM_PARTICLE_COUNT: 6,
+    STREAM_SPREAD: 80,
+    STREAM_GRAVITY: 0.8,
+    STREAM_TICKS: 600,
+    STREAM_INTERVAL_MS: 100,
+    STREAM_DURATION_MS: 3200
+  };
+
+  const config = {
+    maxDistance: 150,
+    clearDistanceThreshold: 2,
+    toleranceRatio: 0.1,
+    minTolerance: 2,
+    touchRadiusPx: 18,
+    cpuRightPadding: 64,
+    cpuMoveDelayMs: 120,
+    cameraFollowDelayMs: 700,
+    unlockDelayMs: 1350,
+    resultHideDelayMs: 1350,
+    worldOffsetX: 6000
+  };
+
+  const state = {
+    turn: 1,
+    hiddenDistance: 1,
+    cpuWorldX: 0,
+    playerWorldX: null,
+    toleranceRange: null,
+    cameraX: 0,
+    locked: false,
+    ended: false,
+    animationId: 0,
+    confettiInterval: null
+  };
+
+  function randomInitialDistance() {
+    return Math.floor(Math.random() * 100) + 1;
+  }
+
+  function toleranceFor(distance) {
+    return Math.max(config.toleranceRatio * distance, config.minTolerance);
+  }
+
+  function evaluateCall(d, call) {
+    const tolerance = toleranceFor(d);
+    const error = Math.abs(call - d);
+
+    if (error <= tolerance) {
+      const accuracy = tolerance > 0 ? 1 - (error / tolerance) : 1;
+      const forward = Math.max(1, 0.5 * d * accuracy);
+      const next = Math.max(0, d - forward);
+      return {
+        judge: 'フィット',
+        kind: 'fit',
+        next: next <= config.clearDistanceThreshold ? 0 : next,
+        delta: -forward
+      };
+    }
+
+    let penaltyDistance;
+    let judge;
+
+    if (call < d - tolerance) {
+      const excess = (d - tolerance) - call;
+      const backward = Math.min(2 * excess, 0.5 * d);
+      penaltyDistance = d + backward;
+      judge = '近すぎ';
+    } else {
+      const excess = call - (d + tolerance);
+      const backward = Math.min(excess, 0.5 * d);
+      penaltyDistance = d + backward;
+      judge = '遠すぎ';
+    }
+
+    return {
+      judge,
+      kind: 'nofit',
+      next: penaltyDistance,
+      delta: penaltyDistance - d
+    };
+  }
+
+  function boardWidth() {
+    return dom.board.clientWidth;
+  }
+
+  function cpuAnchorScreenX() {
+    return boardWidth() - config.cpuRightPadding;
+  }
+
+  function distanceScale() {
+    return Math.max(1, cpuAnchorScreenX() / config.maxDistance);
+  }
+
+  function alignCameraToCpu() {
+    state.cameraX = state.cpuWorldX - cpuAnchorScreenX();
+  }
+
+  function screenToWorldX(screenX) {
+    return screenX + state.cameraX;
+  }
+
+  function worldToScreenX(worldX) {
+    return worldX - state.cameraX;
+  }
+
+  function distanceToPixels(distance) {
+    return distance * distanceScale();
+  }
+
+  function worldToLayerX(worldX) {
+    return worldX + config.worldOffsetX;
+  }
+
+  function placePerson(el, worldX) {
+    el.style.left = `${worldToLayerX(worldX)}px`;
+  }
+
+  function ensureWorldWidth() {
+    const xs = [state.cpuWorldX, state.cameraX, state.cameraX + boardWidth()];
+
+    if (state.playerWorldX !== null) {
+      xs.push(state.playerWorldX);
+    }
+
+    if (state.toleranceRange) {
+      xs.push(state.toleranceRange.start, state.toleranceRange.end);
+    }
+
+    const minX = Math.min(...xs, 0);
+    const maxX = Math.max(...xs, boardWidth());
+    const requiredLeft = Math.max(0, -minX + 1200);
+    const requiredRight = maxX + 1200;
+
+    dom.world.style.width = `${Math.max(12000, config.worldOffsetX + requiredLeft, config.worldOffsetX + requiredRight)}px`;
+  }
+
+  function renderActors() {
+    placePerson(dom.cpu, state.cpuWorldX);
+
+    if (state.playerWorldX === null) {
+      dom.player.style.display = 'none';
+    } else {
+      dom.player.style.display = 'block';
+      placePerson(dom.player, state.playerWorldX);
+    }
+  }
+
+  function renderMeasureBand() {
+    if (state.playerWorldX === null) {
+      dom.measureBand.style.display = 'none';
+      return;
+    }
+
+    const cpuX = worldToLayerX(state.cpuWorldX);
+    const playerX = worldToLayerX(state.playerWorldX);
+    const left = Math.min(cpuX, playerX);
+    const width = Math.abs(cpuX - playerX);
+
+    dom.measureBand.style.display = 'block';
+    dom.measureBand.style.left = `${left}px`;
+    dom.measureBand.style.width = `${width}px`;
+  }
+
+  function renderToleranceBand() {
+    if (!state.toleranceRange) {
+      dom.toleranceBand.style.display = 'none';
+      return;
+    }
+
+    const startX = worldToLayerX(state.toleranceRange.start);
+    const endX = worldToLayerX(state.toleranceRange.end);
+    const left = Math.min(startX, endX);
+    const width = Math.abs(endX - startX);
+
+    dom.toleranceBand.style.display = 'block';
+    dom.toleranceBand.style.left = `${left}px`;
+    dom.toleranceBand.style.width = `${width}px`;
+  }
+
+  function renderGrid() {
+    dom.world.style.transform = `translateX(${-state.cameraX - config.worldOffsetX}px)`;
+  }
+
+  function renderViewport() {
+    ensureWorldWidth();
+    renderGrid();
+    renderActors();
+    renderMeasureBand();
+    renderToleranceBand();
+  }
+
+  function renderHud() {
+    dom.turn.textContent = String(state.turn);
+  }
+
+  function setResult(text, kind) {
+    dom.result.textContent = text;
+    dom.result.className = kind;
+    dom.result.style.display = 'block';
+    dom.judge.textContent = text;
+  }
+
+  function hideResultLater(animationId) {
+    setTimeout(() => {
+      if (animationId !== state.animationId) return;
+      if (!state.ended) {
+        dom.result.style.display = 'none';
+      }
+    }, config.resultHideDelayMs);
+  }
+
+  function addLog(text) {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.textContent = text;
+    dom.log.prepend(div);
+  }
+
+  function stopConfetti() {
+    if (state.confettiInterval) {
+      clearInterval(state.confettiInterval);
+      state.confettiInterval = null;
+    }
+
+    if (typeof confetti !== 'undefined' && typeof confetti.reset === 'function') {
+      confetti.reset();
+    }
+  }
+
+  function startConfetti() {
+    if (typeof confetti === 'undefined') return;
+
+    stopConfetti();
+
+    [0.2, 0.5, 0.8].forEach((x) => {
+      confetti({
+        particleCount: CONFETTI_SETTINGS.INITIAL_PARTICLE_COUNT,
+        angle: 90,
+        spread: CONFETTI_SETTINGS.INITIAL_SPREAD,
+        origin: { x, y: 0 },
+        gravity: CONFETTI_SETTINGS.INITIAL_GRAVITY,
+        ticks: CONFETTI_SETTINGS.INITIAL_TICKS
+      });
+    });
+
+    state.confettiInterval = setInterval(() => {
+      confetti({
+        particleCount: CONFETTI_SETTINGS.STREAM_PARTICLE_COUNT,
+        angle: 90,
+        spread: CONFETTI_SETTINGS.STREAM_SPREAD,
+        origin: { x: Math.random(), y: 0 },
+        gravity: CONFETTI_SETTINGS.STREAM_GRAVITY,
+        ticks: CONFETTI_SETTINGS.STREAM_TICKS
+      });
+    }, CONFETTI_SETTINGS.STREAM_INTERVAL_MS);
+
+    setTimeout(stopConfetti, CONFETTI_SETTINGS.STREAM_DURATION_MS);
+  }
+
+  function showClearModal(turns) {
+    dom.clearTurns.textContent = `クリアにかかったターン：${turns}回`;
+    dom.clearModal.classList.add('show');
+  }
+
+  function hideClearModal() {
+    dom.clearModal.classList.remove('show');
+  }
+
+  function setToleranceRange(cpuWorldX, playerWorldX, distance) {
+    const tolerance = toleranceFor(distance);
+    const near = Math.max(0, distance - tolerance);
+    const far = distance + tolerance;
+    const direction = playerWorldX >= cpuWorldX ? 1 : -1;
+
+    state.toleranceRange = {
+      start: cpuWorldX + direction * distanceToPixels(near),
+      end: cpuWorldX + direction * distanceToPixels(far)
+    };
+  }
+
+  function resetGame() {
+    stopConfetti();
+    hideClearModal();
+    state.turn = 1;
+    state.hiddenDistance = randomInitialDistance();
+    state.cpuWorldX = 0;
+    state.playerWorldX = null;
+    state.toleranceRange = null;
+    alignCameraToCpu();
+    state.locked = false;
+    state.ended = false;
+    state.animationId += 1;
+
+    dom.result.style.display = 'none';
+    dom.judge.textContent = '未判定';
+    dom.log.innerHTML = '<div class="log-entry">新しいゲームを開始しました。</div>';
+
+    renderHud();
+    renderViewport();
+  }
+
+  function finishGame(message, kind) {
+    state.ended = true;
+    state.locked = true;
+    setResult(message, kind);
+    addLog(message === 'タッチ成功' ? 'ゲームクリア。リセットで再開できます。' : '距離感が150を超えました。ゲームオーバー。');
+
+    if (message === 'タッチ成功') {
+      showClearModal(state.turn);
+      startConfetti();
+    }
+  }
+
+  function handleBoardClick(e) {
+    if (state.locked || state.ended) return;
+
+    const rect = dom.board.getBoundingClientRect();
+    const playerScreenX = e.clientX - rect.left;
+    const playerWorldX = screenToWorldX(playerScreenX);
+    const rawCallDistancePx = Math.abs(playerWorldX - state.cpuWorldX);
+    const callDistance = rawCallDistancePx / distanceScale();
+    const oldDistance = state.hiddenDistance;
+    const animationId = state.animationId + 1;
+    state.animationId = animationId;
+
+    state.playerWorldX = playerWorldX;
+    if (oldDistance > 0) {
+      setToleranceRange(state.cpuWorldX, playerWorldX, oldDistance);
+    }
+    renderViewport();
+
+    const isTouchAttempt = oldDistance === 0 && rawCallDistancePx <= config.touchRadiusPx;
+    let outcome = isTouchAttempt
+      ? { judge: 'タッチ成功', kind: 'fit', next: 0, delta: 0 }
+      : evaluateCall(oldDistance, callDistance);
+
+    if (outcome.next > config.maxDistance) {
+      outcome = {
+        ...outcome,
+        judge: 'ゲームオーバー',
+        kind: 'nofit',
+        gameOver: true
+      };
+    }
+
+    setResult(outcome.judge, outcome.kind);
+    addLog(`ターン${state.turn}: ${outcome.judge}`);
+
+    state.locked = true;
+    state.hiddenDistance = outcome.next;
+
+    const nextCpuWorldX = playerWorldX + distanceToPixels(oldDistance);
+
+    setTimeout(() => {
+      if (animationId !== state.animationId) return;
+      state.cpuWorldX = nextCpuWorldX;
+      renderViewport();
+
+      setTimeout(() => {
+        if (animationId !== state.animationId) return;
+        alignCameraToCpu();
+        renderViewport();
+      }, config.cameraFollowDelayMs);
+    }, config.cpuMoveDelayMs);
+
+    if (outcome.judge === 'タッチ成功') {
+      finishGame('タッチ成功', 'fit');
+      return;
+    }
+
+    if (outcome.gameOver) {
+      finishGame('ゲームオーバー', 'nofit');
+      return;
+    }
+
+    state.turn += 1;
+    renderHud();
+
+    setTimeout(() => {
+      if (animationId !== state.animationId) return;
+      state.locked = false;
+    }, config.unlockDelayMs);
+    hideResultLater(animationId);
+  }
+
+  dom.board.addEventListener('click', handleBoardClick);
+  dom.resetBtn.addEventListener('click', resetGame);
+  dom.modalResetBtn.addEventListener('click', resetGame);
+  window.addEventListener('resize', () => {
+    alignCameraToCpu();
+    renderViewport();
+  });
+
+  requestAnimationFrame(resetGame);
+})();
+</script>
+</body>
+</html>
