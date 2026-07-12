@@ -312,7 +312,7 @@
   <div class="controls">
     <button id="resetBtn">リセット</button>
     <span class="note">
-      許容幅は距離感の10%を基本とし、最低幅2を確保します。近すぎは遠すぎより重く、失敗時の後退量は現在距離の50%までに抑えます。
+      許容幅は距離感の10%を基本とし、最低幅2を確保します。近すぎは遠すぎより重く、失敗時の後退量は現在距離までに抑えます。
     </span>
   </div>
 </div>
@@ -393,7 +393,8 @@
     const error = Math.abs(call - d);
 
     if (error <= tolerance) {
-      const forward = Math.max(1, tolerance - error);
+      const accuracy = tolerance > 0 ? 1 - (error / tolerance) : 1;
+      const forward = Math.max(1, 0.5 * d * accuracy);
       const next = Math.max(0, d - forward);
       return {
         judge: 'フィット',
@@ -407,13 +408,11 @@
     let judge;
 
     if (call < d - tolerance) {
-      const excess = (d - tolerance) - call;
-      const backward = Math.min(2 * excess, 0.5 * d);
+      const backward = Math.min(2 * error, d);
       penaltyDistance = d + backward;
       judge = '近すぎ';
     } else {
-      const excess = call - (d + tolerance);
-      const backward = Math.min(excess, 0.5 * d);
+      const backward = Math.min(error, d);
       penaltyDistance = d + backward;
       judge = '遠すぎ';
     }
