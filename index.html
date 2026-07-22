@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>距離感ゲーム</title>
+<title>あなたの距離感、それで合ってる？</title>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
   :root {
@@ -99,11 +99,22 @@
     position: absolute;
     top: 0;
     height: 100%;
-    background: rgba(245,158,11,.18);
-    border: 1px solid rgba(217,119,6,.46);
+    background: rgba(21,128,61,.14);
+    border: 1px dashed rgba(21,128,61,.68);
     pointer-events: none;
     display: none;
     z-index: 2;
+  }
+  #toleranceBand::before {
+    content: "前回";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--fit);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
   }
   .person {
     position: absolute;
@@ -185,6 +196,18 @@
   #cpu {
     color: var(--cpu);
   }
+  #cpu .arms-raised,
+  #cpu .arms-touch {
+    display: none;
+  }
+  #cpu.pose-fit .arms-default,
+  #cpu.pose-touch .arms-default {
+    display: none;
+  }
+  #cpu.pose-fit .arms-raised,
+  #cpu.pose-touch .arms-touch {
+    display: block;
+  }
   #player {
     color: var(--player);
     display: none;
@@ -260,11 +283,6 @@
     padding: 18px 20px;
     text-align: left;
   }
-  .modal-title {
-    margin: 0 0 14px;
-    font-size: 20px;
-    font-weight: 700;
-  }
   .modal-rank {
     margin: 0 0 10px;
     font-size: 16px;
@@ -310,12 +328,12 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>距離感ゲーム</h1>
+  <h1>あなたの距離感、それで合ってる？</h1>
   <div class="rules">
     <div>直線上の位置を指定して、相手の距離感にフィットさせよう。</div>
     <div>フィットすれば距離感は近づき、外れると遠ざかる。</div>
     <div>最終的にタッチできる距離感まで近づけばクリア。</div>
-    <div>黄色の帯は、前回のフィット範囲を示します。</div>
+    <div>緑の帯は、前回の距離感を示します。</div>
   </div>
 
   <div class="board-shell">
@@ -338,7 +356,15 @@
         <svg viewBox="0 0 32 56" aria-hidden="true">
           <circle cx="16" cy="8" r="5"></circle>
           <path d="M16 14v19"></path>
-          <path d="M7 23h18"></path>
+          <path class="arms-default" d="M7 23h18"></path>
+          <g class="arms-raised">
+            <path d="M16 22 7 13"></path>
+            <path d="M16 22 25 13"></path>
+          </g>
+          <g class="arms-touch">
+            <path d="M16 22 7 12"></path>
+            <path d="M16 22 7 34"></path>
+          </g>
           <path d="M16 33 8 50"></path>
           <path d="M16 33 24 50"></path>
         </svg>
@@ -361,9 +387,8 @@
   </div>
 </div>
 
-<div id="clearModal" aria-modal="true" role="dialog" aria-labelledby="clearModalTitle">
+<div id="clearModal" aria-modal="true" role="dialog" aria-label="クリア結果">
   <div class="modal-panel">
-    <h2 class="modal-title" id="clearModalTitle">タッチ成功</h2>
     <p class="modal-rank">あなたは<span id="clearRank">距離感マスター</span>です</p>
     <p class="modal-turns" id="clearTurns">かかったターン：0</p>
     <div class="modal-actions">
@@ -576,10 +601,16 @@
     dom.turn.textContent = String(state.turn);
   }
 
+  function setCpuPose(pose = 'default') {
+    dom.cpu.classList.toggle('pose-fit', pose === 'fit');
+    dom.cpu.classList.toggle('pose-touch', pose === 'touch');
+  }
+
   function setResult(text, kind) {
     dom.result.textContent = text;
     dom.result.className = kind;
     dom.result.style.display = 'block';
+    setCpuPose(text === 'タッチ成功' ? 'touch' : kind === 'fit' ? 'fit' : 'default');
   }
 
   function hideResultLater(animationId) {
@@ -587,6 +618,7 @@
       if (animationId !== state.animationId) return;
       if (!state.ended) {
         dom.result.style.display = 'none';
+        setCpuPose();
       }
     }, config.resultHideDelayMs);
   }
@@ -676,7 +708,7 @@
 
     context.fillStyle = '#1f2937';
     context.font = '700 44px system-ui, sans-serif';
-    context.fillText('距離感ゲーム', 88, 118);
+    context.fillText('あなたの距離感、それで合ってる？', 88, 118);
     context.strokeStyle = '#9ca3af';
     context.lineWidth = 3;
     context.beginPath();
@@ -769,6 +801,7 @@
     state.animationId += 1;
 
     dom.result.style.display = 'none';
+    setCpuPose();
     renderHud();
     renderViewport();
   }
