@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">距離感くらいしす！</title>
+  <desc id="description">あなたの距離感、それで合ってる？ 近すぎと判定された二人の棒人間</desc>
+
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&amp;family=Noto+Serif+JP:wght@700&amp;display=swap");
+    .title { font-family: "Noto Sans JP", sans-serif; font-weight: 900; }
+    .subtitle { font-family: "Noto Serif JP", serif; font-weight: 700; }
+    .toast-label { font-family: "Noto Sans JP", sans-serif; font-weight: 900; }
+  </style>
+
+  <rect width="1200" height="630" fill="#f4f6f8"/>
+
+  <g fill="#172133">
+    <text class="title" x="76" y="132" font-size="76">距離感くらいしす！</text>
+    <text class="subtitle" x="80" y="294" font-size="54">あなたの距離感、</text>
+    <text class="subtitle" x="80" y="364" font-size="54">それで合ってる？</text>
+  </g>
+
+  <g>
+    <rect x="773.5" y="138" width="286" height="83" rx="3" fill="#c51b1f" stroke="#172133" stroke-width="4"/>
+    <text class="toast-label" x="916.5" y="193" fill="#fff" font-size="40" text-anchor="middle">近すぎ</text>
+  </g>
+
+  <line x1="55" y1="521" x2="1143" y2="521" stroke="#d1d5db" stroke-width="4"/>
+
+  <g fill="none" stroke="#2864e8" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="824" cy="296" r="23"/>
+    <path d="M824 319v104M752 374h144M824 423l-58 90M824 423l58 90"/>
+  </g>
+
+  <g fill="none" stroke="#101827" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1009" cy="296" r="23"/>
+    <path d="M1009 319v104M937 374h144M1009 423l-58 90M1009 423l58 90"/>
+  </g>
+</svg>

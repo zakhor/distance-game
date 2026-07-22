@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>あなたの距離感、それで合ってる？</title>
+<title>距離感くらいしす！</title>
 <meta name="description" content="相手とのちょうどいい距離を探すゲーム" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="T.Y. Lab" />
-<meta property="og:title" content="あなたの距離感、それで合ってる？" />
+<meta property="og:title" content="距離感くらいしす！" />
 <meta property="og:description" content="相手とのちょうどいい距離を探すゲーム" />
 <meta property="og:url" content="https://distance-game.ty-lab.net/" />
 <meta property="og:image" content="https://distance-game.ty-lab.net/ogp.png" />
@@ -47,15 +47,23 @@
     padding: 20px;
   }
   h1 {
-    margin: 0 0 10px;
+    margin: 0 0 16px;
     font-size: 24px;
+  }
+  h1 .subtitle {
+    display: inline-block;
+    margin-left: 12px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 600;
   }
   .rules {
     margin: 0 0 16px;
+    padding-left: 1.4em;
     color: var(--muted);
     line-height: 1.6;
   }
-  .rules div + div { margin-top: 3px; }
+  .rules li + li { margin-top: 3px; }
   .card {
     background: var(--panel);
     border: 2px solid var(--border);
@@ -287,6 +295,25 @@
     background: var(--text);
     color: #fff;
   }
+  .mode-switcher {
+    display: inline-flex;
+    align-items: stretch;
+  }
+  .mode-button {
+    border-radius: 0;
+    margin-left: -2px;
+  }
+  .mode-button:first-child {
+    margin-left: 0;
+    border-radius: 4px 0 0 4px;
+  }
+  .mode-button:last-child { border-radius: 0 4px 4px 0; }
+  .mode-button.active {
+    position: relative;
+    background: var(--text);
+    color: #fff;
+  }
+  .mode-button.active:hover { background: var(--text); }
   #clearModal {
     position: fixed;
     inset: 0;
@@ -301,7 +328,7 @@
     display: flex;
   }
   .modal-panel {
-    width: min(360px, 100%);
+    width: min(420px, 100%);
     background: #fff;
     border: 2px solid var(--text);
     border-radius: 4px;
@@ -312,11 +339,12 @@
     margin: 0 0 10px;
     font-size: 16px;
     font-weight: 700;
+    white-space: nowrap;
   }
   #clearRank {
     display: inline-block;
     margin-inline: .4em;
-    color: var(--player);
+    color: #7e22ce;
     font-family: "Noto Sans JP", system-ui, sans-serif;
     font-size: 22px;
     font-weight: 900;
@@ -350,18 +378,25 @@
   @media (max-width: 720px) {
     .wrap { padding: 12px; }
   }
+  @media (max-width: 480px) {
+    .modal-rank { font-size: 13px; }
+    #clearRank {
+      margin-inline: .2em;
+      font-size: 16px;
+    }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>あなたの距離感、それで合ってる？</h1>
-  <div class="rules">
-    <div>直線上の位置を指定して、相手の距離感にフィットさせよう。</div>
-    <div>フィットすれば距離感は近づき、外れると遠ざかる。</div>
-    <div>最終的にタッチできる距離感まで近づけばクリア。</div>
-    <div>緑の帯は、前回の距離感を示します。</div>
-    <div>スマホでは、画面を横向きにしてのプレイを推奨します。</div>
-  </div>
+  <h1>距離感くらいしす！<span class="subtitle">あなたの距離感、それで合ってる？</span></h1>
+  <ul class="rules">
+    <li>直線上の位置を指定して、相手の距離感にフィットさせよう</li>
+    <li>フィットすれば距離感は近づき、外れると遠ざかる</li>
+    <li>最終的にタッチできる距離感まで近づけばクリア</li>
+    <li>緑の帯は、前回の距離感を示します</li>
+    <li>スマホでは、画面を横向きにしてのプレイを推奨します</li>
+  </ul>
 
   <div class="board-shell">
     <div id="board" aria-label="ゲーム盤">
@@ -411,6 +446,11 @@
 
   <div class="controls">
     <button id="resetBtn">リセット</button>
+    <div class="mode-switcher" role="group" aria-label="ゲームモード">
+      <button class="mode-button active" type="button" data-mode="normal" aria-pressed="true">NORMAL</button>
+      <button class="mode-button" type="button" data-mode="hard" aria-pressed="false">HARD</button>
+      <button class="mode-button" type="button" data-mode="hell" aria-pressed="false">HELL</button>
+    </div>
   </div>
 </div>
 
@@ -439,6 +479,7 @@
     result: document.getElementById('result'),
     turn: document.getElementById('turn'),
     resetBtn: document.getElementById('resetBtn'),
+    modeButtons: [...document.querySelectorAll('.mode-button')],
     saveResultBtn: document.getElementById('saveResultBtn'),
     modalResetBtn: document.getElementById('modalResetBtn'),
     clearModal: document.getElementById('clearModal'),
@@ -461,19 +502,34 @@
     Z_INDEX: 30
   };
 
+  const RANKS = [
+    { maxTurns: 5, title: '距離感マスター', color: '#7e22ce' },
+    { maxTurns: 10, title: '距離感熟練者', color: '#b8860b' },
+    { maxTurns: 15, title: '距離感上手', color: '#b91c1c' },
+    { maxTurns: 20, title: '距離感見習い', color: '#15803d' },
+    { maxTurns: Infinity, title: '距離感初心者', color: '#2563eb' }
+  ];
+
+  const MODES = {
+    normal: { tooClosePenaltyMultiplier: 2, tooFarPenaltyMultiplier: 1 },
+    hard: { tooClosePenaltyMultiplier: 4, tooFarPenaltyMultiplier: 2 },
+    hell: { gameOverOnMiss: true }
+  };
+
   const config = {
+    initialMinDistance: 4,
+    initialMaxDistance: 100,
     maxDistance: 150,
     clearDistanceThreshold: 2,
     toleranceRatio: 0.1,
     minTolerance: 2,
-    tooClosePenaltyMultiplier: 4,
-    tooFarPenaltyMultiplier: 2,
     touchRadiusPx: 18,
     cpuRightPadding: 64,
     resultHideDelayMs: 1350
   };
 
   const state = {
+    mode: 'normal',
     turn: 1,
     hiddenDistance: 1,
     playerDistance: null,
@@ -486,7 +542,8 @@
   };
 
   function randomInitialDistance() {
-    return Math.floor(Math.random() * 100) + 1;
+    const range = config.initialMaxDistance - config.initialMinDistance + 1;
+    return Math.floor(Math.random() * range) + config.initialMinDistance;
   }
 
   function toleranceFor(distance) {
@@ -509,18 +566,30 @@
       };
     }
 
-    let penaltyDistance;
+    const mode = MODES[state.mode];
     let judge;
 
     if (call < d - tolerance) {
-      const backward = Math.min(config.tooClosePenaltyMultiplier * error, d);
-      penaltyDistance = d + backward;
       judge = '近すぎ';
     } else {
-      const backward = Math.min(config.tooFarPenaltyMultiplier * error, d);
-      penaltyDistance = d + backward;
       judge = '遠すぎ';
     }
+
+    if (mode.gameOverOnMiss) {
+      return {
+        judge: 'ゲームオーバー',
+        kind: 'nofit',
+        next: d,
+        delta: 0,
+        gameOver: true
+      };
+    }
+
+    const penaltyMultiplier = judge === '近すぎ'
+      ? mode.tooClosePenaltyMultiplier
+      : mode.tooFarPenaltyMultiplier;
+    const backward = Math.min(penaltyMultiplier * error, d);
+    const penaltyDistance = d + backward;
 
     return {
       judge,
@@ -705,16 +774,18 @@
     }, CONFETTI_SETTINGS.STREAM_INTERVAL_MS);
   }
 
-  function titleForTurns(turns) {
-    if (turns <= 5) return '距離感マスター';
-    if (turns <= 10) return '距離感熟練者';
-    if (turns <= 15) return '距離感上手';
-    if (turns <= 20) return '距離感見習い';
-    return '距離感初心者';
+  function rankForTurns(turns) {
+    return RANKS.find((rank) => turns <= rank.maxTurns);
+  }
+
+  function rankTitleForMode(rank, mode) {
+    return mode === 'normal' ? rank.title : `${rank.title}（${mode.toUpperCase()}）`;
   }
 
   function showClearModal(turns) {
-    dom.clearRank.textContent = titleForTurns(turns);
+    const rank = rankForTurns(turns);
+    dom.clearRank.textContent = rankTitleForMode(rank, state.mode);
+    dom.clearRank.style.color = rank.color;
     dom.clearTurns.textContent = `かかったターン：${turns}`;
     dom.clearModal.classList.add('show');
   }
@@ -736,8 +807,13 @@
     context.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
 
     context.fillStyle = '#1f2937';
-    context.font = '700 44px system-ui, sans-serif';
-    context.fillText('あなたの距離感、それで合ってる？', 88, 118);
+    context.font = '900 48px "Noto Sans JP", system-ui, sans-serif';
+    const title = '距離感くらいしす！';
+    context.fillText(title, 88, 118);
+    const subtitleX = 88 + context.measureText(title).width + 24;
+    context.fillStyle = '#6b7280';
+    context.font = '600 28px system-ui, sans-serif';
+    context.fillText('あなたの距離感、それで合ってる？', subtitleX, 118);
     context.strokeStyle = '#9ca3af';
     context.lineWidth = 3;
     context.beginPath();
@@ -745,8 +821,9 @@
     context.lineTo(canvas.width - 88, 160);
     context.stroke();
 
+    const rank = rankForTurns(state.turn);
     const rankPrefix = '私は';
-    const rankTitle = titleForTurns(state.turn);
+    const rankTitle = rankTitleForMode(rank, state.mode);
     const rankSuffix = 'です';
     const rankY = 340;
     const rankGap = 18;
@@ -757,8 +834,17 @@
     context.fillText(rankPrefix, rankX, rankY);
     rankX += context.measureText(rankPrefix).width + rankGap;
 
-    context.fillStyle = '#2563eb';
-    context.font = '900 78px "Noto Sans JP", system-ui, sans-serif';
+    context.fillStyle = rank.color;
+    context.font = '700 48px system-ui, sans-serif';
+    const suffixWidth = context.measureText(rankSuffix).width;
+    const maxRankWidth = canvas.width - 88 - rankX - rankGap - suffixWidth;
+    let rankFontSize = 78;
+    while (rankFontSize > 48) {
+      context.font = `900 ${rankFontSize}px "Noto Sans JP", system-ui, sans-serif`;
+      if (context.measureText(rankTitle).width <= maxRankWidth) break;
+      rankFontSize -= 2;
+    }
+    context.font = `900 ${rankFontSize}px "Noto Sans JP", system-ui, sans-serif`;
     context.fillText(rankTitle, rankX, rankY);
     rankX += context.measureText(rankTitle).width + rankGap;
 
@@ -834,6 +920,18 @@
     setCpuPose();
     renderHud();
     renderViewport();
+  }
+
+  function setMode(mode) {
+    if (!MODES[mode] || state.mode === mode) return;
+
+    state.mode = mode;
+    dom.modeButtons.forEach((button) => {
+      const isActive = button.dataset.mode === mode;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+    resetGame();
   }
 
   function finishGame(message, kind) {
@@ -915,6 +1013,9 @@
   dom.board.addEventListener('mousemove', handleBoardMouseMove);
   dom.board.addEventListener('mouseleave', handleBoardMouseLeave);
   dom.resetBtn.addEventListener('click', resetGame);
+  dom.modeButtons.forEach((button) => {
+    button.addEventListener('click', () => setMode(button.dataset.mode));
+  });
   dom.saveResultBtn.addEventListener('click', copyResultImage);
   dom.modalResetBtn.addEventListener('click', resetGame);
   window.addEventListener('resize', () => {
