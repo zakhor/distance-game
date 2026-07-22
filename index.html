@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>あなたの距離感、それで合ってる？</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
   :root {
@@ -292,8 +295,9 @@
     display: inline-block;
     margin-inline: .4em;
     color: var(--player);
+    font-family: "Noto Sans JP", system-ui, sans-serif;
     font-size: 22px;
-    font-weight: 800;
+    font-weight: 900;
   }
   .modal-turns {
     margin: 0 0 16px;
@@ -334,6 +338,7 @@
     <div>フィットすれば距離感は近づき、外れると遠ざかる。</div>
     <div>最終的にタッチできる距離感まで近づけばクリア。</div>
     <div>緑の帯は、前回の距離感を示します。</div>
+    <div>スマホでは、画面を横向きにしてのプレイを推奨します。</div>
   </div>
 
   <div class="board-shell">
@@ -678,9 +683,9 @@
 
   function titleForTurns(turns) {
     if (turns <= 10) return '距離感マスター';
-    if (turns <= 30) return '距離感熟練者';
-    if (turns <= 60) return '距離感上手';
-    if (turns <= 100) return '距離感見習い';
+    if (turns <= 20) return '距離感熟練者';
+    if (turns <= 30) return '距離感上手';
+    if (turns <= 50) return '距離感見習い';
     return '距離感初心者';
   }
 
@@ -716,31 +721,28 @@
     context.lineTo(canvas.width - 88, 160);
     context.stroke();
 
-    context.fillStyle = '#15803d';
-    context.font = '700 84px system-ui, sans-serif';
-    context.fillText('タッチ成功', 88, 310);
-    const rankPrefix = 'あなたは';
+    const rankPrefix = '私は';
     const rankTitle = titleForTurns(state.turn);
     const rankSuffix = 'です';
-    const rankY = 410;
-    const rankGap = 14;
+    const rankY = 340;
+    const rankGap = 18;
     let rankX = 88;
 
     context.fillStyle = '#1f2937';
-    context.font = '700 36px system-ui, sans-serif';
+    context.font = '700 48px system-ui, sans-serif';
     context.fillText(rankPrefix, rankX, rankY);
     rankX += context.measureText(rankPrefix).width + rankGap;
 
     context.fillStyle = '#2563eb';
-    context.font = '800 48px system-ui, sans-serif';
+    context.font = '900 78px "Noto Sans JP", system-ui, sans-serif';
     context.fillText(rankTitle, rankX, rankY);
     rankX += context.measureText(rankTitle).width + rankGap;
 
     context.fillStyle = '#1f2937';
-    context.font = '700 36px system-ui, sans-serif';
+    context.font = '700 48px system-ui, sans-serif';
     context.fillText(rankSuffix, rankX, rankY);
     context.font = '700 36px system-ui, sans-serif';
-    context.fillText(`かかったターン：${state.turn}`, 88, 485);
+    context.fillText(`かかったターン：${state.turn}`, 88, 460);
 
     return canvas;
   }
@@ -757,6 +759,10 @@
   }
 
   async function copyResultImage() {
+    if (document.fonts && typeof document.fonts.load === 'function') {
+      await document.fonts.load('900 78px "Noto Sans JP"');
+    }
+
     const canvas = createResultImageCanvas();
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) return;
