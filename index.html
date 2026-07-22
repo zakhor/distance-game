@@ -111,8 +111,9 @@
   }
   #toleranceBand {
     position: absolute;
-    top: 0;
-    height: 100%;
+    top: 12px;
+    bottom: 12px;
+    height: auto;
     background: rgba(21,128,61,.14);
     border: 1px dashed rgba(21,128,61,.68);
     pointer-events: none;
@@ -129,6 +130,16 @@
     font-size: 12px;
     font-weight: 800;
     white-space: nowrap;
+  }
+  #toleranceBand::after {
+    content: "";
+    position: absolute;
+    top: -12px;
+    bottom: -12px;
+    left: 50%;
+    height: auto;
+    border-left: 1px dashed rgba(21,128,61,.68);
+    transform: translateX(-50%);
   }
   .person {
     position: absolute;
@@ -455,6 +466,8 @@
     clearDistanceThreshold: 2,
     toleranceRatio: 0.1,
     minTolerance: 2,
+    tooClosePenaltyMultiplier: 4,
+    tooFarPenaltyMultiplier: 2,
     touchRadiusPx: 18,
     cpuRightPadding: 64,
     resultHideDelayMs: 1350
@@ -500,11 +513,11 @@
     let judge;
 
     if (call < d - tolerance) {
-      const backward = Math.min(2 * error, d);
+      const backward = Math.min(config.tooClosePenaltyMultiplier * error, d);
       penaltyDistance = d + backward;
       judge = '近すぎ';
     } else {
-      const backward = Math.min(error, d);
+      const backward = Math.min(config.tooFarPenaltyMultiplier * error, d);
       penaltyDistance = d + backward;
       judge = '遠すぎ';
     }
@@ -693,10 +706,10 @@
   }
 
   function titleForTurns(turns) {
-    if (turns <= 10) return '距離感マスター';
-    if (turns <= 20) return '距離感熟練者';
-    if (turns <= 30) return '距離感上手';
-    if (turns <= 50) return '距離感見習い';
+    if (turns <= 5) return '距離感マスター';
+    if (turns <= 10) return '距離感熟練者';
+    if (turns <= 15) return '距離感上手';
+    if (turns <= 20) return '距離感見習い';
     return '距離感初心者';
   }
 
